@@ -1,0 +1,118 @@
+using DrWatson
+@quickactivate "project"
+using DifferentialEquations
+using Plots
+using DataFrames
+using JLD2
+
+script_name = splitext(basename(PROGRAM_FILE))[1]
+mkpath(plotsdir(script_name))
+mkpath(datadir(script_name))
+
+a = 0.3
+b = 0.7
+c = 0.6
+h = 0.25
+
+x0 = 100.0
+y0 = 80.0
+tspan = (0.0, 30.0)
+
+function regular_vs_regular!(du, u, p, t)
+    a, b, c, h, P, Q = p
+    x, y = u
+    du[1] = -a*x - b*y + P(t)
+    du[2] = -c*x - h*y + Q(t)
+end
+
+P1(t) = sin(t) + 1
+Q1(t) = cos(t) + 1
+
+prob1 = ODEProblem(regular_vs_regular!, [x0, y0], tspan, (a, b, c, h, P1, Q1))
+sol1 = solve(prob1, Tsit5(), saveat=0.05)
+
+function regular_vs_partisan!(du, u, p, t)
+    a, b, c, h, P, Q = p
+    x, y = u
+    du[1] = -a*x - b*y + P(t)
+    du[2] = -c*x*y - h*y + Q(t)
+end
+
+P2(t) = sin(2t) + 1
+Q2(t) = cos(t) + 1
+
+prob2 = ODEProblem(regular_vs_partisan!, [x0, y0], tspan, (a, b, c, h, P2, Q2))
+sol2 = solve(prob2, Tsit5(), saveat=0.05)
+
+function partisan_vs_partisan!(du, u, p, t)
+    a, b, c, h, P, Q = p
+    x, y = u
+    du[1] = -a*x - b*x*y + P(t)
+    du[2] = -c*x*y - h*y + Q(t)
+end
+
+P3(t) = sin(t) + 1
+Q3(t) = cos(t) + 1
+
+prob3 = ODEProblem(partisan_vs_partisan!, [x0, y0], tspan, (a, b, c, h, P3, Q3))
+sol3 = solve(prob3, Tsit5(), saveat=0.05)
+
+p = plot(layout=(3,1), size=(900, 900),
+    xlabel="t", ylabel="Численность",
+    legend=:topright)
+
+plot!(p[1], sol1.t, [u[1] for u in sol1.u], label="X (регулярные)", lw=2, color=:blue)
+plot!(p[1], sol1.t, [u[2] for u in sol1.u], label="Y (регулярные)", lw=2, color=:red)
+plot!(p[1], title="Модель 1: регулярные vs регулярные")
+
+plot!(p[2], sol2.t, [u[1] for u in sol2.u], label="X (регулярные)", lw=2, color=:blue)
+plot!(p[2], sol2.t, [u[2] for u in sol2.u], label="Y (партизаны)", lw=2, color=:red)
+plot!(p[2], title="Модель 2: регулярные vs партизаны")
+
+plot!(p[3], sol3.t, [u[1] for u in sol3.u], label="X (партизаны)", lw=2, color=:blue)
+plot!(p[3], sol3.t, [u[2] for u in sol3.u], label="Y (партизаны)", lw=2, color=:red)
+plot!(p[3], title="Модель 3: партизаны vs партизаны")
+
+savefig(plotsdir(script_name, "three_models.png"))
+
+pf = plot(layout=(1,3), size=(1200, 400),
+    xlabel="x", ylabel="y", legend=false)
+
+plot!(pf[1], [u[1] for u in sol1.u], [u[2] for u in sol1.u], lw=2, color=:blue)
+plot!(pf[1], title="Модель 1")
+
+plot!(pf[2], [u[1] for u in sol2.u], [u[2] for u in sol2.u], lw=2, color=:green)
+plot!(pf[2], title="Модель 2")
+
+plot!(pf[3], [u[1] for u in sol3.u], [u[2] for u in sol3.u], lw=2, color=:purple)
+plot!(pf[3], title="Модель 3")
+
+savefig(plotsdir(script_name, "phase_portraits.png"))
+
+function determine_winner(sol)
+    x_final = last(sol.u)[1]
+    y_final = last(sol.u)[2]
+    if x_final > y_final
+        return "X побеждает"
+    elseif y_final > x_final
+        return "Y побеждает"
+    else
+        return "Ничья"
+    end
+end
+
+println("Победители в трёх моделях:")
+println("  Модель 1: ", determine_winner(sol1))
+println("  Модель 2: ", determine_winner(sol2))
+println("  Модель 3: ", determine_winner(sol3))
+
+df = DataFrame(
+    model = ["Регулярные vs регулярные", "Регулярные vs партизаны", "Партизаны vs партизаны"],
+    x_final = [last(sol1.u)[1], last(sol2.u)[1], last(sol3.u)[1]],
+    y_final = [last(sol1.u)[2], last(sol2.u)[2], last(sol3.u)[2]],
+    winner = [determine_winner(sol1), determine_winner(sol2), determine_winner(sol3)]
+)
+println("\nСводная таблица:")
+println(df)
+
+@save datadir(script_name, "three_models.jld2") df sol1 sol2 sol3
