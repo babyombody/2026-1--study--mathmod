@@ -1,0 +1,132 @@
+# Модель конкуренции: вариант 53
+
+**Условие:**
+- M₀¹ = 7.8, M₀² = 9.8
+- p_cr = 48, N = 50, q = 1
+- τ₁ = 34, τ₂ = 28
+- p̃₁ = 9.8, p̃₂ = 11.8
+- Случай 2: коэффициент M₁M₂ для фирмы 1 увеличен на 0.00043
+
+```{julia}
+import Pkg
+Pkg.activate("/home/dabakharev/work/study/2026-1/2026-1==study--mathmod/labs/lab08/project")
+using DrWatson
+using DifferentialEquations
+using Plots
+Plots.default(fmt = :png)
+using DataFrames
+using JLD2
+
+script_name = splitext(basename(PROGRAM_FILE))[1]
+mkpath(plotsdir(script_name))
+mkpath(datadir(script_name))
+```
+
+## Параметры варианта 53
+
+```{julia}
+p_cr = 48.0
+N    = 50.0
+q    = 1.0
+τ1   = 34.0
+τ2   = 28.0
+p1   = 9.8
+p2   = 11.8
+
+a1 = p_cr / (τ1^2 * p1^2 * N * q)
+a2 = p_cr / (τ2^2 * p2^2 * N * q)
+b  = p_cr / (τ1^2 * p1^2 * τ2^2 * p2^2 * N * q)
+c1 = (p_cr - p1) / (τ1 * p1)
+c2 = (p_cr - p2) / (τ2 * p2)
+
+println("Коэффициенты варианта 53:")
+println("  a₁ = $a1, a₂ = $a2")
+println("  b  = $b")
+println("  c₁ = $c1, c₂ = $c2")
+```
+
+## Начальные условия
+
+```{julia}
+M0 = [7.8, 9.8]
+θ_span = (0.0, 30.0)
+```
+
+## Случай 1: чисто рыночная конкуренция
+
+```{julia}
+function competition_sym!(du, u, p, t)
+    a1, a2, b, c1, c2 = p
+    M1, M2 = u
+    du[1] = M1 - (b/c1) * M1 * M2 - (a1/c1) * M1^2
+    du[2] = (c2/c1) * M2 - (b/c1) * M1 * M2 - (a2/c1) * M2^2
+end
+
+prob1 = ODEProblem(competition_sym!, M0, θ_span, (a1, a2, b, c1, c2))
+sol1 = solve(prob1, Tsit5(), saveat=0.05)
+```
+
+## Случай 2: с соц-психологическим фактором
+
+Коэффициент перед M₁M₂ для первой фирмы увеличен на 0.00043.
+
+```{julia}
+δ = 0.00043
+
+function competition_asym!(du, u, p, t)
+    a1, a2, b, c1, c2, δ = p
+    M1, M2 = u
+    du[1] = M1 - (b/c1 + δ) * M1 * M2 - (a1/c1) * M1^2
+    du[2] = (c2/c1) * M2 - (b/c1) * M1 * M2 - (a2/c1) * M2^2
+end
+
+prob2 = ODEProblem(competition_asym!, M0, θ_span, (a1, a2, b, c1, c2, δ))
+sol2 = solve(prob2, Tsit5(), saveat=0.05)
+```
+
+## Визуализация
+
+```{julia}
+p = plot(layout=(2,1), size=(900, 800),
+    xlabel="θ (безразмерное время)", ylabel="M",
+    legend=:topright)
+
+plot!(p[1], sol1.t, [u[1] for u in sol1.u], label="M₁ (фирма 1)", lw=2, color=:blue)
+plot!(p[1], sol1.t, [u[2] for u in sol1.u], label="M₂ (фирма 2)", lw=2, color=:green)
+plot!(p[1], title="Вариант 53, случай 1: чисто рыночная конкуренция")
+
+plot!(p[2], sol2.t, [u[1] for u in sol2.u], label="M₁ (фирма 1)", lw=2, color=:blue)
+plot!(p[2], sol2.t, [u[2] for u in sol2.u], label="M₂ (фирма 2)", lw=2, color=:green)
+plot!(p[2], title="Вариант 53, случай 2: с соц-психологическим фактором")
+
+savefig(plotsdir(script_name, "variant53.png"))
+```
+
+## Стационарное состояние (случай 1)
+
+Решаем систему dM₁/dθ = 0, dM₂/dθ = 0 без члена M₁M₂:
+M₁(1 - a₁/c₁ · M₁) = 0 ⇒ M₁* = c₁/a₁
+M₂(c₂/c₁ - a₂/c₁ · M₂) = 0 ⇒ M₂* = c₂/a₂
+
+```{julia}
+M1_star = c1 / a1
+M2_star = c2 / a2
+
+println("\nСтационарное состояние (случай 1):")
+println("  M₁* = $M1_star")
+println("  M₂* = $M2_star")
+```
+
+## Итоги
+
+```{julia}
+df = DataFrame(
+    случай = ["1: симметричный", "2: асимметричный"],
+    M1_final = [last(sol1.u)[1], last(sol2.u)[1]],
+    M2_final = [last(sol1.u)[2], last(sol2.u)[2]]
+)
+println(df)
+
+@save datadir(script_name, "variant53.jld2") df sol1 sol2 M1_star M2_star
+```
+

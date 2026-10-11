@@ -6,9 +6,13 @@ standalone: true
 self-contained: true
 
 ## Julia support
-# engine: julia
-# julia:
-#   exeflags: ["--project=../project"]
+engine: julia
+jupyter: julia-lab08-1.13
+julia:
+  exeflags: ["--project=/home/dabakharev/work/study/2026-1/2026-1==study--mathmod/labs/lab08/project"]
+
+fig-format: png
+fig-dpi: 96
 
 ## Generic options
 lang: ru-RU
