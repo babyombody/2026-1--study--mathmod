@@ -6,9 +6,10 @@ standalone: true
 self-contained: true
 
 ## Julia support
-# engine: julia
-# julia:
-#   exeflags: ["--project=../project"]
+engine: julia
+jupyter: julia-lab04-1.13
+julia:
+  exeflags: ["--project=/home/dabakharev/work/study/2026-1/2026-1==study--mathmod/labs/lab04/project"]
 
 ## Generic options
 lang: ru-RU

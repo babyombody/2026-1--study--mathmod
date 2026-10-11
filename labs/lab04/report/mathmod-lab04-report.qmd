@@ -156,3 +156,11 @@ graph TD
 - акты внедрения и т.п.
 
 Каждое приложение начинается с новой страницы и имеет заголовок (например, «Приложение А. Листинг программы»).
+
+## Задание 1: три случая гармонического осциллятора
+
+{{< include ../project/markdown/01_oscillator_three_cases/01_oscillator_three_cases.qmd >}}
+
+## Задание 2: вариант 53
+
+{{< include ../project/markdown/02_variant53/02_variant53.qmd >}}
