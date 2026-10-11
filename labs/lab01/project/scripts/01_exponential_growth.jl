@@ -1,0 +1,88 @@
+# # Экспоненциальный рост
+#
+# **Цель:** Исследовать решение уравнения $\frac{du}{dt} = \alpha u$.
+#
+# Экспоненциальный рост — это процесс, при котором скорость роста
+# величины пропорциональна её текущему значению:
+#
+# $$\frac{du}{dt} = \alpha u, \quad u(0) = u_0$$
+#
+# где $\alpha$ — константа роста (мальтузианский параметр).
+
+# ## Инициализация проекта
+#
+# Подключаем необходимые пакеты и активируем проект DrWatson.
+
+using DrWatson
+@quickactivate "project"
+using DifferentialEquations
+using Plots
+using DataFrames
+using JLD2
+
+# Определяем имя текущего скрипта и создаём папки для результатов.
+
+script_name = splitext(basename(PROGRAM_FILE))[1]
+mkpath(plotsdir(script_name))
+mkpath(datadir(script_name))
+
+# ## Определение модели
+#
+# Записываем правую часть дифференциального уравнения.
+
+function exponential_growth!(du, u, p, t)
+    α = p
+    du[1] = α * u[1]
+end
+
+# ## Запуск с параметрами по умолчанию
+#
+# Задаём начальные параметры:
+#
+# - $u_0 = 1.0$ — начальная популяция,
+# - $\alpha = 0.3$ — скорость роста,
+# - $t \in [0, 10]$ — временной интервал.
+
+u0 = [1.0]
+α = 0.3
+tspan = (0.0, 10.0)
+
+# Создаём и решаем задачу Коши методом Tsit5.
+
+prob = ODEProblem(exponential_growth!, u0, tspan, α)
+sol = solve(prob, Tsit5(), saveat=0.1)
+
+# ## Визуализация
+#
+# Строим график решения и сохраняем его в папку `plots/`.
+
+plot(sol,
+    label="u(t)",
+    xlabel="Время t",
+    ylabel="Популяция u",
+    title="Экспоненциальный рост (α = $α)",
+    lw=2,
+    legend=:topleft)
+
+savefig(plotsdir(script_name, "exponential_growth_α=$α.png"))
+
+# ## Анализ результатов
+#
+# Создаём таблицу с данными и выводим первые 5 строк.
+
+df = DataFrame(t=sol.t, u=first.(sol.u))
+println("Первые 5 строк результатов:")
+println(first(df, 5))
+
+# Вычисляем аналитическое время удвоения по формуле
+# $T_2 = \ln(2) / \alpha$.
+
+u_final = last(sol.u)[1]
+doubling_time = log(2) / α
+println("\nАналитическое время удвоения: ", round(doubling_time; digits=2))
+
+# ## Сохранение результатов
+#
+# Сохраняем таблицу в формате JLD2 для последующего анализа.
+
+@save datadir(script_name, "all_results.jld2") df
