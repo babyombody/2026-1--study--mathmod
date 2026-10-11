@@ -9,8 +9,8 @@ script_name = splitext(basename(PROGRAM_FILE))[1]
 mkpath(plotsdir(script_name))
 mkpath(datadir(script_name))
 
-n = 3.0
-k = 7.0
+n = 4.7
+k = 17.6
 
 x1 = k / (n + 1)
 x2 = k / (n - 1)

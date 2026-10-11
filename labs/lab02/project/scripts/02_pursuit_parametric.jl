@@ -44,8 +44,8 @@ end
 # ## Базовый набор параметров
 
 base_params = Dict(
-    :n => 3.0,
-    :k => 7.0
+    :n => 4.7,
+    :k => 17.6
 )
 
 data, path = produce_or_load(
@@ -64,8 +64,8 @@ println("  Файл: ", path)
 
 # ## Параметрическое сканирование по n
 
-n_grid = [2.0, 2.5, 3.0, 4.0, 5.0]
-k_fixed = 7.0
+n_grid = [2.0, 3.0, 4.0, 4.7, 5.0, 6.0]
+k_fixed = 17.6
 
 println("\n" * "="^60)
 println("Сканирование по n (k = $k_fixed)")
@@ -89,8 +89,8 @@ savefig(plotsdir(script_name, "parametric_n.png"))
 
 # ## Параметрическое сканирование по k
 
-k_grid = [3.0, 5.0, 7.0, 10.0, 15.0]
-n_fixed = 3.0
+k_grid = [5.0, 10.0, 17.6, 25.0, 35.0]
+n_fixed = 4.7
 
 println("\n" * "="^60)
 println("Сканирование по k (n = $n_fixed)")
