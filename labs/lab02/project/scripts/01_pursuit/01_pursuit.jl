@@ -1,0 +1,76 @@
+using DrWatson
+@quickactivate "project"
+using DifferentialEquations
+using Plots
+using DataFrames
+using JLD2
+
+script_name = splitext(basename(PROGRAM_FILE))[1]
+mkpath(plotsdir(script_name))
+mkpath(datadir(script_name))
+
+n = 3.0
+k = 7.0
+
+x1 = k / (n + 1)
+x2 = k / (n - 1)
+
+println("Параметры задачи:")
+println("  n = $n")
+println("  k = $k км")
+println("  x₁ = $x1 км (случай 1)")
+println("  x₂ = $x2 км (случай 2)")
+
+α_coef = sqrt(n^2 - 1)
+
+function dr_dtheta(r, θ, p)
+    return r / α_coef
+end
+
+θ_span1 = (0.0, 2π)
+prob1 = ODEProblem(dr_dtheta, x1, θ_span1)
+sol1 = solve(prob1, Tsit5(), saveat=0.01)
+
+θ_span2 = (-π, π)
+prob2 = ODEProblem(dr_dtheta, x2, θ_span2)
+sol2 = solve(prob2, Tsit5(), saveat=0.01)
+
+x1_cat = sol1.u .* cos.(sol1.t)
+y1_cat = sol1.u .* sin.(sol1.t)
+
+x2_cat = sol2.u .* cos.(sol2.t)
+y2_cat = sol2.u .* sin.(sol2.t)
+
+t_boat = 0:0.1:20
+x_boat_1 = t_boat
+y_boat_1 = zeros(length(t_boat))
+x_boat_2 = -t_boat
+y_boat_2 = zeros(length(t_boat))
+
+p = plot(
+    aspect_ratio=:equal,
+    xlabel="x, км",
+    ylabel="y, км",
+    title="Траектория преследования (n=$n, k=$k)",
+    legend=:topright,
+    size=(800, 600)
+)
+
+plot!(p, x1_cat, y1_cat, label="Катер (случай 1)", lw=2, color=:blue)
+plot!(p, x_boat_1, y_boat_1, label="Лодка (случай 1)", lw=2, color=:red, linestyle=:dash)
+plot!(p, x2_cat, y2_cat, label="Катер (случай 2)", lw=2, color=:green)
+plot!(p, x_boat_2, y_boat_2, label="Лодка (случай 2)", lw=2, color=:orange, linestyle=:dash)
+scatter!(p, [0], [0], label="Полюс", markersize=10, color=:black)
+scatter!(p, [k], [0], label="Катер в начальный момент", markersize=8, color=:purple)
+
+savefig(plotsdir(script_name, "pursuit_trajectories.png"))
+
+df = DataFrame(
+    случай = ["1", "2"],
+    r0_км  = [x1, x2],
+    θ0     = [0.0, -π]
+)
+println("\nНачальные условия:")
+println(df)
+
+@save datadir(script_name, "pursuit_results.jld2") df x1 x2 n k

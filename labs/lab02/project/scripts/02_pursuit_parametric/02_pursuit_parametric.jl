@@ -1,0 +1,141 @@
+using DrWatson
+@quickactivate "project"
+using DifferentialEquations
+using Plots
+using DataFrames
+using JLD2
+using BenchmarkTools
+
+script_name = splitext(basename(PROGRAM_FILE))[1]
+mkpath(plotsdir(script_name))
+mkpath(datadir(script_name))
+
+function solve_pursuit(n, k; saveat=0.01)
+    α_coef = sqrt(n^2 - 1)
+    dr_dtheta(r, θ, p) = r / α_coef
+
+    x1 = k / (n + 1)
+    x2 = k / (n - 1)
+
+    prob1 = ODEProblem(dr_dtheta, x1, (0.0, 2π))
+    sol1 = solve(prob1, Tsit5(); saveat=saveat)
+
+    prob2 = ODEProblem(dr_dtheta, x2, (-π, π))
+    sol2 = solve(prob2, Tsit5(); saveat=saveat)
+
+    return Dict(
+        "sol1" => sol1,
+        "sol2" => sol2,
+        "x1"   => x1,
+        "x2"   => x2
+    )
+end
+
+base_params = Dict(
+    :n => 3.0,
+    :k => 7.0
+)
+
+data, path = produce_or_load(
+    datadir(script_name, "single"),
+    base_params,
+    (p) -> solve_pursuit(p[:n], p[:k]),
+    prefix = "pursuit",
+    tag    = false,
+    verbose = true
+)
+
+println("Базовый запуск: n=$(base_params[:n]), k=$(base_params[:k])")
+println("  x₁ = ", data["x1"])
+println("  x₂ = ", data["x2"])
+println("  Файл: ", path)
+
+n_grid = [2.0, 2.5, 3.0, 4.0, 5.0]
+k_fixed = 7.0
+
+println("\n" * "="^60)
+println("Сканирование по n (k = $k_fixed)")
+println("="^60)
+
+p_n = plot(
+    aspect_ratio=:equal,
+    xlabel="x, км", ylabel="y, км",
+    title="Влияние n на траекторию катера (k=$k_fixed)",
+    legend=:topright, size=(800, 600)
+)
+
+for n_val in n_grid
+    res = solve_pursuit(n_val, k_fixed)
+    x_cat = res["sol1"].u .* cos.(res["sol1"].t)
+    y_cat = res["sol1"].u .* sin.(res["sol1"].t)
+    plot!(p_n, x_cat, y_cat, label="n=$n_val", lw=2)
+end
+
+savefig(plotsdir(script_name, "parametric_n.png"))
+
+k_grid = [3.0, 5.0, 7.0, 10.0, 15.0]
+n_fixed = 3.0
+
+println("\n" * "="^60)
+println("Сканирование по k (n = $n_fixed)")
+println("="^60)
+
+p_k = plot(
+    aspect_ratio=:equal,
+    xlabel="x, км", ylabel="y, км",
+    title="Влияние k на траекторию катера (n=$n_fixed)",
+    legend=:topright, size=(800, 600)
+)
+
+for k_val in k_grid
+    res = solve_pursuit(n_fixed, k_val)
+    x_cat = res["sol1"].u .* cos.(res["sol1"].t)
+    y_cat = res["sol1"].u .* sin.(res["sol1"].t)
+    plot!(p_k, x_cat, y_cat, label="k=$k_val", lw=2)
+end
+
+savefig(plotsdir(script_name, "parametric_k.png"))
+
+results = []
+for n_val in n_grid, k_val in k_grid
+    res = solve_pursuit(n_val, k_val)
+    push!(results, (
+        n = n_val,
+        k = k_val,
+        x1 = res["x1"],
+        x2 = res["x2"],
+        ratio_x2_x1 = res["x2"] / res["x1"]
+    ))
+end
+
+results_df = DataFrame(results)
+println("\nСводная таблица:")
+println(results_df)
+
+println("\n" * "="^60)
+println("Бенчмаркинг")
+println("="^60)
+
+bench_results = []
+for n_val in n_grid
+    b = @benchmark solve_pursuit($n_val, $k_fixed) samples=20 evals=1
+    push!(bench_results, (n=n_val, time=median(b).time / 1e9))
+    println("n = $n_val: ", round(median(b).time / 1e9; digits=4), " сек")
+end
+
+bench_df = DataFrame(bench_results)
+
+p_bench = plot(
+    bench_df.n, bench_df.time,
+    seriestype=:scatter,
+    label="Время решения",
+    xlabel="n", ylabel="Время, сек",
+    title="Зависимость времени вычисления от n",
+    markersize=8, markercolor=:red, legend=:topleft
+)
+savefig(plotsdir(script_name, "benchmark_n.png"))
+
+@save datadir(script_name, "all_results.jld2") base_params n_grid k_grid results_df bench_df
+@save datadir(script_name, "all_plots.jld2") p_n p_k p_bench
+
+println("\nГотово!")
