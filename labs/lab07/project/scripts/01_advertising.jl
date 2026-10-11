@@ -1,0 +1,86 @@
+# # Модель распространения рекламы
+#
+# **Задание 1 (методичка).** Исследовать модель:
+# $$\frac{dn}{dt} = (\alpha_1(t) + \alpha_2(t)n(t))(N - n(t))$$
+#
+# Сравнить случаи $\alpha_1 \gg \alpha_2 n$ (платная реклама) и
+# $\alpha_1 \ll \alpha_2 n$ (сарафанное радио).
+
+import Pkg
+Pkg.activate("/home/dabakharev/work/study/2026-1/2026-1==study--mathmod/labs/lab07/project")
+using DrWatson
+using DifferentialEquations
+using Plots
+Plots.default(fmt = :png)
+using DataFrames
+using JLD2
+
+script_name = splitext(basename(PROGRAM_FILE))[1]
+mkpath(plotsdir(script_name))
+mkpath(datadir(script_name))
+
+# ## Параметры (пример 1 из методички)
+
+N = 400.0
+n0 = 1.0
+tspan = (0.0, 30.0)
+
+α1_A = 0.055   # платная реклама преобладает
+α2_A = 0.0018
+
+# ## Случай A: преобладает платная реклама (α₁ ≫ α₂·n)
+
+function advertising!(du, u, p, t)
+    α1, α2, N = p
+    n = u[1]
+    du[1] = (α1 + α2 * n) * (N - n)
+end
+
+probA = ODEProblem(advertising!, [n0], tspan, (α1_A, α2_A, N))
+solA = solve(probA, Tsit5(), saveat=0.1)
+
+# ## Случай B: преобладает сарафанное радио (α₁ ≪ α₂·n)
+
+α1_B = 0.0005   # маленькая платная реклама
+α2_B = 0.05     # сильное сарафанное радио
+
+probB = ODEProblem(advertising!, [n0], tspan, (α1_B, α2_B, N))
+solB = solve(probB, Tsit5(), saveat=0.1)
+
+# ## Только платная реклама (α₂ = 0)
+
+probC = ODEProblem(advertising!, [n0], tspan, (α1_A, 0.0, N))
+solC = solve(probC, Tsit5(), saveat=0.1)
+
+# ## Только сарафанное радио (α₁ = 0)
+
+probD = ODEProblem(advertising!, [n0], tspan, (0.0, α2_B, N))
+solD = solve(probD, Tsit5(), saveat=0.1)
+
+# ## Визуализация
+
+p = plot(layout=(2,1), size=(900, 800),
+    xlabel="t", ylabel="n(t)",
+    legend=:bottomright)
+
+plot!(p[1], solA.t, [u[1] for u in solA.u], label="α₁≫α₂·n (платная)", lw=2, color=:blue)
+plot!(p[1], solB.t, [u[1] for u in solB.u], label="α₁≪α₂·n (сарафан)", lw=2, color=:red)
+plot!(p[1], title="Сравнение двух режимов рекламы")
+
+plot!(p[2], solC.t, [u[1] for u in solC.u], label="только платная", lw=2, color=:green)
+plot!(p[2], solD.t, [u[1] for u in solD.u], label="только сарафан", lw=2, color=:orange)
+plot!(p[2], title="Предельные случаи")
+
+savefig(plotsdir(script_name, "advertising.png"))
+
+# ## Момент максимальной скорости (аналитически)
+
+println("Максимум dn/dt достигается при n = N/2 = $(N/2)")
+
+df = DataFrame(
+    случай = ["α₁≫α₂", "α₁≪α₂", "только платная", "только сарафан"],
+    n_final = [last(solA.u)[1], last(solB.u)[1], last(solC.u)[1], last(solD.u)[1]]
+)
+println(df)
+
+@save datadir(script_name, "advertising.jld2") df solA solB solC solD
