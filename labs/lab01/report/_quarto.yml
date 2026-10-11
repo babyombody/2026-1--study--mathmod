@@ -7,8 +7,12 @@ self-contained: true
 
 ## Julia support
 engine: julia
+jupyter: julia-lab01-1.13
 julia:
   exeflags: ["--project=/home/dabakharev/work/study/2026-1/2026-1==study--mathmod/labs/lab01/project"]
+
+fig-format: png
+fig-dpi: 96
 
 ## Generic options
 lang: ru-RU
@@ -34,7 +38,7 @@ format:
     toc-depth: 2
   ### Pdf output format
   pdf:
-    # pdf-engine: xelatex
+    pdf-engine: xelatex
     ### minted support
     # filters:
     #   - minted-quarto
