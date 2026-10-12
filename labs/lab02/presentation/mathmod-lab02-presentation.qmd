@@ -85,6 +85,17 @@ $$r_1 = \frac{17.6}{5.7} e^{\theta / \sqrt{21.09}}, \quad r_2 = \frac{17.6}{3.7}
 
 ![Установка пакетов Julia](image/2.png){width=60%}
 
+## Код скриптов
+
+Скрипт `01_pursuit.jl` решает задачу преследования (рис. 1).
+
+![Код скрипта 01_pursuit.jl](image/16.png){width=70%}
+
+Скрипт `02_pursuit_parametric.jl` проводит параметрическое исследование
+(рис. 2).
+
+![Код скрипта 02_pursuit_parametric.jl](image/17.png){width=70%}
+
 ## Запуск базового скрипта
 
 ![Результат запуска 01_pursuit.jl](image/3.png){width=60%}
