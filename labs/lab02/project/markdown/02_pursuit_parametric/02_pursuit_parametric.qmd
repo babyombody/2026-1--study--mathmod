@@ -7,9 +7,8 @@
 точка перехвата.
 
 ```{julia}
-import Pkg
-Pkg.activate("/home/dabakharev/work/study/2026-1/2026-1==study--mathmod/labs/lab02/project")
 using DrWatson
+@quickactivate "project"
 using DifferentialEquations
 using Plots
 using DataFrames
